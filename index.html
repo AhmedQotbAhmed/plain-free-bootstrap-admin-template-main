@@ -1469,40 +1469,65 @@
 //         $("#data").html(html);
 //     });
 // });
-  $.ajax({
-    url: "http://localhost:8080/api/v1/services?offset=0",
-    type: "GET",
-    dataType: "json",
-    success: function (response) {
-      console.log(response); // check the response in the browser console
-      if (response && response.length > 0) { // check if the response contains data
-        var tableBody = "";
+function populateTable(response) {
+  console.log(response); // check the response in the browser console
+  if (response && response.length > 0) { // check if the response contains data
+    var tableBody = "";
 
-        $.each(response, function (i, service) {
-          console.log(service.id); // access the service id
-          // process other properties as needed
-          // html += "<div class='item'>";
-          // html += "<h2>" + item.products.name + "</h2>";
-          // html += "<p>" + item.category_name + "</p>";
-          // html += "<img src='" + item.service_images + "' />";
-          // html += "</div>";
-          tableBody += "<tr>";
-          tableBody += "<td><div class='product'><div class='image'><img src='" + service.service_images + "' alt='' /></div><p class='text-sm'>" + service.products.name + "</p></div></td>";
+    $.each(response, function (i, service) {
+      tableBody += "<tr>";
+
+      // split the service_images string using the comma separator and get the first URL
+      var imageUrls = service.service_images.split(",");
+      var firstImageUrl = imageUrls[0];
+
+      // move the second Ajax call outside of the $.each loop and pass the firstImageUrl parameter
+      downloadImage(firstImageUrl, function(blob) {
+        var reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = function() {
+          var base64data = reader.result;
+          tableBody += "<td><div class='product'><div class='image'><img src='" + base64data + "' width='100' height='100' alt='' /></div><p class='text-sm'>" + service.products.name + "</p></div></td>";
           tableBody += "<td><p class='text-sm'>" + service.category_name + "</p></td>";
           tableBody += "<td><p class='text-sm'>" + service.discount_value + "</p></td>";
           tableBody += "<td><span class='status - btn close - btn " + service.rate + "'>" + service.business.status + "</span></td>";
           tableBody += "<td><div class='action justify-content-end'><button class='edit'><i class='lni lni-pencil'></i></button><button class='more-btn ml-10 dropdown-toggle' id='moreAction1' data-bs-toggle='dropdown' aria-expanded='false'><i class='lni lni-more-alt'></i></button><ul class='dropdown-menu dropdown-menu-end' aria-labelledby='moreAction1'><li class='dropdown-item'><a href='#0' class='text-gray'>Remove</a></li><li class='dropdown-item'><a href='#0' class='text-gray'>Edit</a></li></ul></div></td>";
           tableBody += "</tr>";
- 
-        });
-        $(".top-selling-table tbody").html(tableBody);
+          $(".top-selling-table tbody").html(tableBody);
+        };
+      });
 
-      }
+    });
+  }
+}
+
+function downloadImage(keyName, callback) {
+  $.ajax({
+    url: "http://localhost:8080/api/v1/s3/download?keyName="+keyName,
+    type: "GET",
+    xhrFields: {
+      responseType: 'blob'
+    },
+    success: function (response) {
+      callback(response);
     },
     error: function (xhr, status, error) {
       console.log(error); // log any errors in the browser console
     }
   });
+}
+
+$.ajax({
+  url: "http://localhost:8080/api/v1/services?offset=0",
+  type: "GET",
+  dataType: "json",
+  success: populateTable, // pass the function as a parameter to the success callback
+  error: function (xhr, status, error) {
+    console.log(error); // log any errors in the browser console
+  }
+});
+
+
 
 </script>
     <script src="assets/js/bootstrap.bundle.min.js"></script>
